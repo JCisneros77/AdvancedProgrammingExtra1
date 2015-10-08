@@ -18,7 +18,7 @@
 #include <stdlib.h>
 
 // Traffic Light Duration
-#define SLEEP_FOR 5
+#define SLEEP_FOR 30
 // Functions
 void ctrlZHandler(int s);
 void ctrlCHandler(int s);
@@ -41,6 +41,7 @@ int main(void) {
 	int shm_id;
 	shm_id = shmget (shm_key, shm_size, IPC_CREAT | S_IRUSR | S_IWUSR);
 	shmaddr = (int*) shmat (shm_id, 0, 0);
+	signal(SIGINT,SIG_IGN);
 
 // Traffic Lights
 	// Traffic Light 1
@@ -159,6 +160,7 @@ void ctrlZHandler(int s){
 	printf("Changing all lights to red...\n");
 	int i;
 	for(i = 0; i < 4; ++i){
+		kill(*(shmaddr + (3*i)),SIGSTOP);
 		*(shmaddr + ((3*i)+2)) = *(shmaddr + ((3*i)+1)); // Save current state as previous state
 		*(shmaddr + ((3*i)+1)) = 0; // Turn to red
 	}
@@ -175,6 +177,7 @@ void ctrlCHandler(int s){
 	printf("Changing all lights to yellow...\n");
 	int i;
 	for(i = 0; i < 4; ++i){
+		kill(*(shmaddr + (3*i)),SIGSTOP);
 		*(shmaddr + ((3*i)+2)) = *(shmaddr + ((3*i)+1)); // Save current state as previous state
 		*(shmaddr + ((3*i)+1)) = 1; // Turn to yellow
 	}
@@ -190,16 +193,18 @@ void returnToPrevState(){
 	printf("Changing all lights to their previous state...\n");
 	int i,pid;
 	for(i = 0; i < 4; ++i){
+		kill(*(shmaddr + (3*i)),SIGCONT);
 		*(shmaddr + ((3*i)+1)) = *(shmaddr + ((3*i)+2));
 		*(shmaddr + ((3*i)+2)) = 0;
 		if(*(shmaddr + ((3*i)+1)) == 2)
 			pid = *(shmaddr + (3*i));
 	}
-	kill(pid,SIGUSR1);
-	lightChanged(0);
+	//kill(pid,SIGUSR1);
+	//lightChanged(0);
 }
 
 void change1(int s){
+	printf("Changing to Light 1.\n");
 	*(shmaddr + 10) = 0; // Change Light4's state to red.
 	*(shmaddr + 11) = 2; // Change Light4's previous state to green.
 	*(shmaddr + 1) = 2; // Change Light1's state to green.
@@ -207,6 +212,7 @@ void change1(int s){
 	kill(getppid(),SIGUSR1);
 }
 void change2(int s){
+	printf("Changing to Light 2.\n");
 	*(shmaddr + 1) = 0; // Change Light1's state to red.
 	*(shmaddr + 2) = 2; // Change Light1's previous state to green.
 	*(shmaddr + 4) = 2; // Change Light2's state to green.
@@ -214,6 +220,7 @@ void change2(int s){
 	kill(getppid(),SIGUSR1);
 }
 void change3(int s){
+	printf("Changing to Light 3.\n");
 	*(shmaddr + 4) = 0; // Change Light2's state to red.
 	*(shmaddr + 5) = 2; // Change Light2's previous state to green.
 	*(shmaddr + 7) = 2; // Change Light3's state to green.
@@ -221,6 +228,7 @@ void change3(int s){
 	kill(getppid(),SIGUSR1);
 }
 void change4(int s){
+	printf("Changing to Light 4.\n");
 	*(shmaddr + 7) = 0; // Change Light3's state to red.
 	*(shmaddr + 8) = 2; // Change Light3's previous state to green.
 	*(shmaddr + 10) = 2; // Change Light4's state to green.
